@@ -20,11 +20,18 @@ enum Theme {
     static let radiusSmall: CGFloat = 6
     static let ease = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.22)
 
-    // Typography — SF Pro for UI, SF Mono for metadata (tabular figures).
-    static func label(_ size: CGFloat = 11) -> Font { .system(size: size, weight: .semibold) }
+    // Typography. SF Pro carries the UI; hierarchy comes from weight and color, not
+    // size. SF Mono is reserved for real data (paths, file names, timestamps,
+    // dimensions). Numbers inside prose use .monospacedDigit() instead of mono.
+    static func label(_ size: CGFloat = 11) -> Font { .system(size: size, weight: .semibold) }   // eyebrows
     static func body(_ size: CGFloat = 13) -> Font { .system(size: size, weight: .regular) }
     static func medium(_ size: CGFloat = 13) -> Font { .system(size: size, weight: .medium) }
+    static func caption(_ size: CGFloat = 11) -> Font { .system(size: size, weight: .regular) } // metadata in prose
     static func mono(_ size: CGFloat = 11) -> Font { .system(size: size, weight: .medium, design: .monospaced) }
+
+    static func credits(_ c: Double) -> String {
+        c.rounded() == c ? "\(Int(c)) cr" : String(format: "%.1f cr", c)
+    }
 }
 
 extension Color {
@@ -49,8 +56,9 @@ struct Eyebrow: View {
                 .foregroundStyle(Theme.secondary)
             if let hint {
                 Text(hint)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.caption(10.5))
                     .foregroundStyle(Theme.muted)
+                    .monospacedDigit()
             }
         }
     }

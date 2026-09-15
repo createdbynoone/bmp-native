@@ -31,7 +31,7 @@ final class AppModel {
 
     // ── Chrome ────────────────────────────────────────────────────────────
     var memoryStats: (total: Int, fired: Int) = (0, 0)
-    var credits: (credits: Int?, plan: String?) = (nil, nil)
+    var credits: (credits: Double?, plan: String?) = (nil, nil)
     var showHistory = false
     var showLogin = false
     var missingTools: [String] = []
@@ -41,14 +41,14 @@ final class AppModel {
     private let logCap = 400
 
     var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
     }
 
     var fireStatus: FireStatus { tasks > 0 ? .loading : fireResult }
     var canGenerate: Bool { !refs.isEmpty && !products.isEmpty && !brief.trimmingCharacters(in: .whitespaces).isEmpty }
     var canFire: Bool { !prompt.isEmpty }
     var showLog: Bool { !log.isEmpty || tasks > 0 }
-    var footerLabel: String { "\(provider.slug) · \(aspectRatio) · \(resolution.uppercased())" }
+    var footerLabel: String { "\(provider.label) \(aspectRatio) \(resolution.uppercased())" }
 
     // ── Boot ──────────────────────────────────────────────────────────────
     func boot() async {
@@ -118,7 +118,7 @@ final class AppModel {
                 refreshMemoryStats()
             } catch {
                 generateError = error.localizedDescription; generateStatus = .error
-                push("Prompt generation failed — \(error.localizedDescription)")
+                push("Prompt generation failed: \(error.localizedDescription)")
             }
         }
     }
@@ -163,7 +163,7 @@ final class AppModel {
                 if s.n > 1 {
                     push(failed == 0 ? "All \(s.n) variations generated."
                         : succeeded == 0 ? "All \(s.n) variations failed."
-                        : "\(succeeded)/\(s.n) generated — \(failed) failed.")
+                        : "\(succeeded)/\(s.n) generated, \(failed) failed.")
                 }
                 fireResult = succeeded > 0 ? .done : .error
                 if succeeded > 0, let id = s.memoryId {
@@ -184,7 +184,7 @@ final class AppModel {
         var refs = Array((refIds ?? []).prefix(provider.maxRefs))
         if refs.isEmpty && !products.isEmpty {
             if products.count > provider.maxRefs {
-                push("\(provider.label) accepts max \(provider.maxRefs) reference images — using the first \(provider.maxRefs)")
+                push("\(provider.label) accepts max \(provider.maxRefs) reference images, using the first \(provider.maxRefs)")
             }
             refs = Array(products.prefix(provider.maxRefs))
         }

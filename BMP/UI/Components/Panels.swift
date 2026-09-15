@@ -40,7 +40,7 @@ struct ActivityLogView: View {
                                     Text(Self.time.string(from: e.date))
                                         .font(Theme.mono(10.5)).foregroundStyle(Theme.muted)
                                     Text(e.line)
-                                        .font(Theme.mono(11))
+                                        .font(Theme.body(12))
                                         .foregroundStyle(color(e.kind))
                                         .textSelection(.enabled)
                                         .fixedSize(horizontal: false, vertical: true)
@@ -86,8 +86,8 @@ struct PromptOutputView: View {
                 Hairline()
                 ScrollView {
                     Text(prompt)
-                        .font(.system(size: 13))
-                        .lineSpacing(4)
+                        .font(Theme.body(13.5))
+                        .lineSpacing(5)
                         .foregroundStyle(Theme.text)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,8 +106,8 @@ struct EmptyState: View {
             BrandMark(size: 34, color: Theme.muted).padding(.bottom, 8)
             ForEach(Array(steps.enumerated()), id: \.offset) { i, s in
                 HStack(spacing: 10) {
-                    Text(String(format: "%02d", i + 1)).font(Theme.mono(10.5)).foregroundStyle(Theme.muted)
-                    Text(s).font(Theme.body(12.5)).foregroundStyle(Theme.secondary)
+                    Text(String(format: "%02d", i + 1)).font(Theme.caption(11)).foregroundStyle(Theme.muted).monospacedDigit()
+                    Text(s).font(Theme.body(13)).foregroundStyle(Theme.secondary)
                 }
             }
         }
@@ -139,21 +139,21 @@ struct Editor: View {
 
 // ── Credits ring ──────────────────────────────────────────────────────────
 struct CreditsRing: View {
-    let credits: Int
+    let credits: Double
     let plan: String?
     private let maxCredits = 1000.0
     var body: some View {
         HStack(spacing: 6) {
             ZStack {
                 Circle().stroke(Color.white.opacity(0.1), lineWidth: 2)
-                Circle().trim(from: 0, to: min(Double(credits) / maxCredits, 1))
+                Circle().trim(from: 0, to: min(credits / maxCredits, 1))
                     .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             }
             .frame(width: 12, height: 12)
-            Text("\(credits) cr").font(Theme.mono(10.5)).foregroundStyle(Theme.secondary).monospacedDigit()
+            Text(Theme.credits(credits)).font(Theme.caption(11)).foregroundStyle(Theme.secondary).monospacedDigit()
             if let plan, !plan.isEmpty {
-                Text(plan.uppercased()).font(Theme.mono(10)).tracking(1).foregroundStyle(Theme.muted)
+                Text(plan.capitalized).font(Theme.caption(11)).foregroundStyle(Theme.muted)
             }
         }
     }

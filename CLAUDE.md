@@ -4,6 +4,7 @@ Port nativo (Swift 5 / SwiftUI, macOS 14+) de la app Electron en `../Brotherhood
 
 **Proyecto:** generado con XcodeGen desde `project.yml` → `xcodegen generate` produce `BMP.xcodeproj` (no se commitea; regenerar tras tocar `project.yml` o agregar archivos fuera de `BMP/`).
 **Build:** `xcodebuild -project BMP.xcodeproj -scheme BMP -configuration Release build` · o abrir `BMP.xcodeproj` en Xcode y ⌘R.
+**Créditos Higgsfield:** `account status --json` devuelve `credits` decimal (509.5) — parsear como `NSNumber`/`Double`, nunca `as? Int` (fue el bug del "—" en Settings/footer).
 **Requisitos de runtime:** `claude` CLI (`~/.local/bin`) y `higgsfield` CLI (`npm i -g @higgsfield/cli`) — se resuelven contra `Shell.searchPath`, no contra el PATH del shell.
 
 ## Estructura
@@ -23,6 +24,7 @@ BMP/UI/         Theme (paleta/tipografía), Components (Controls, DropZone, Pane
 ## Decisiones de diseño (skills minimalist-ui / redesign, adaptadas a macOS nativo)
 - **Nativo primero**: titlebar estándar con título/subtítulo y toolbar unificada (History · Reset · Settings), `HSplitView` redimensionable, `Picker(.segmented)` para engine/ratio/resolución/variaciones, botones `.borderedProminent` con tint de acento, `Settings` scene (⌘,) con `Form(.grouped)`, sheet de historial con `List` + preview, menú **Prompt** con atajos (⌘↩ generar, ⌘⇧↩ disparar, ⌘Y historial, ⌘R reset, ⌘⇧O carpeta de salida, ⌘⇧C copiar prompt).
 - **Esencia que se conserva**: paleta cálida-oscura (`Theme`: bg `#0B0B0A`, surface `#111110`, hairlines white 7%), logo Brotherhood (`Logo.imageset` SVG template, `BrandMark`) en splash de arranque (`SplashView`, ~1.1 s), lock screen y empty state, acento naranja Brotherhood `#F54F1B` solo en acción principal/loading/★ (era oro, cambiado 2026-09-15), eyebrows en small caps con tracking, SF Mono para metadata/log/footer, cards con hairline, sin sombras ni gradientes. `titlebarAppearsTransparent` + `backgroundColor` = Theme.bg para que la ventana sea una sola superficie.
+- Tipografía: SF Pro para toda la UI (jerarquía por peso/color); SF Mono solo para datos reales (rutas, timestamps del log); números en prosa con `.monospacedDigit()`; `Theme.caption` para metadata. Sin guiones largos en cadenas visibles.
 - Motion: una sola curva (`Theme.ease`, cubic-bezier 0.32/0.72/0/1, 220ms); pulso solo en el dot de tarea activa.
 
 ## Lo que NO está (vs Electron)

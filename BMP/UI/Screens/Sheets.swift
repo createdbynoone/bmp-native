@@ -31,7 +31,7 @@ struct SettingsView: View {
                 LabeledContent("higgsfield", value: Shell.resolve("higgsfield") ?? "not found")
                 LabeledContent("Higgsfield credits") {
                     HStack(spacing: 8) {
-                        Text(model.credits.credits.map { "\($0) cr" } ?? "—")
+                        Text(model.credits.credits.map(Theme.credits) ?? "Not signed in").monospacedDigit()
                         Button("Refresh") { Task { await model.refreshCredits() } }.controlSize(.small)
                         Button("Log in") { model.showLogin = true; Task { try? await Higgsfield.login(); model.showLogin = false; await model.refreshCredits() } }.controlSize(.small)
                     }
@@ -86,7 +86,7 @@ struct HistorySheet: View {
                             Text(e.description).font(.system(size: 12, weight: .medium)).lineLimit(1)
                         }
                         Text(Self.df.string(from: e.date) + (e.aspectRatio.map { " · \($0)" } ?? ""))
-                            .font(Theme.mono(10)).foregroundStyle(.secondary)
+                            .font(Theme.caption(10.5)).foregroundStyle(.secondary).monospacedDigit()
                     }
                     .padding(.vertical, 2)
                     .tag(e.id)
@@ -114,7 +114,7 @@ struct HistorySheet: View {
 
             Divider()
             HStack {
-                Text("\(filtered.count) prompts").font(Theme.mono(10.5)).foregroundStyle(.secondary)
+                Text("\(filtered.count) prompts").font(Theme.caption(11)).foregroundStyle(.secondary).monospacedDigit()
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Use prompt") { if let e = current { model.usePrompt(e.prompt) }; dismiss() }

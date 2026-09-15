@@ -49,8 +49,8 @@ struct MissingToolsBar: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-            Text("Falta el CLI \(tools.joined(separator: " y ")) — instala con `npm i -g @anthropic-ai/claude-code @higgsfield/cli` y reabre BMP.")
-                .font(Theme.mono(11))
+            Text("Falta el CLI \(tools.joined(separator: " y ")). Instala con `npm i -g @anthropic-ai/claude-code @higgsfield/cli` y reabre BMP.")
+                .font(Theme.body(12))
             Spacer()
         }
         .foregroundStyle(Theme.warn)
@@ -111,7 +111,7 @@ struct InputsColumn: View {
 
                 if !model.generateError.isEmpty {
                     Text(model.generateError)
-                        .font(Theme.mono(11))
+                        .font(Theme.body(12))
                         .foregroundStyle(Theme.danger)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -179,18 +179,18 @@ struct FooterBar: View {
     @Environment(AppModel.self) private var model
     var body: some View {
         HStack {
-            Text(model.footerLabel.uppercased()).font(Theme.mono(10.5)).tracking(1.2).foregroundStyle(Theme.muted)
+            Text(model.footerLabel).font(Theme.caption(11)).foregroundStyle(Theme.muted).monospacedDigit()
             Spacer()
             HStack(spacing: 14) {
                 if model.memoryStats.total > 0 {
                     HStack(spacing: 4) {
-                        Text("memory \(model.memoryStats.total)").font(Theme.mono(10.5)).foregroundStyle(Theme.muted)
+                        Text("\(model.memoryStats.total) in memory").font(Theme.caption(11)).foregroundStyle(Theme.muted).monospacedDigit()
                         Text("·").foregroundStyle(Theme.muted)
-                        Text("★ \(model.memoryStats.fired) fired").font(Theme.mono(10.5)).foregroundStyle(Theme.accent.opacity(0.75))
+                        Text("★ \(model.memoryStats.fired) fired").font(Theme.caption(11)).foregroundStyle(Theme.accent.opacity(0.75)).monospacedDigit()
                     }
                 }
                 if let c = model.credits.credits { CreditsRing(credits: c, plan: model.credits.plan) }
-                Text("v\(model.appVersion)").font(Theme.mono(10.5)).foregroundStyle(Theme.muted)
+                Text("v\(model.appVersion)").font(Theme.caption(11)).foregroundStyle(Theme.muted).monospacedDigit()
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 6)

@@ -61,7 +61,7 @@ struct Segment<T: Hashable>: View {
             Text(title.uppercased()).font(Theme.label(9.5)).tracking(1.2).foregroundStyle(Theme.muted)
             Picker(title, selection: $selection) {
                 ForEach(options, id: \.self) { o in
-                    Text(display(o)).font(Theme.mono(11)).tag(o)
+                    Text(display(o)).font(.system(size: 11, weight: .medium)).monospacedDigit().tag(o)
                 }
             }
             .pickerStyle(.segmented)
@@ -117,6 +117,6 @@ struct FireButton: View {
         .tint(tint)
         .disabled(disabled)
         .keyboardShortcut(.return, modifiers: [.command, .shift])
-        .help(status == .loading && !disabled ? "Task keeps running in background — click fires another batch in parallel" : "Fire to Higgsfield  ⌘⇧↩")
+        .help(status == .loading && !disabled ? "Task keeps running in background. Click to fire another batch in parallel" : "Fire to Higgsfield  ⌘⇧↩")
     }
 }

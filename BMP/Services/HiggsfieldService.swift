@@ -19,7 +19,7 @@ enum HiggsfieldError: LocalizedError {
         case .noJobId: return "Higgsfield: no job id returned"
         case .failed: return "Higgsfield: generation failed (credits refunded)"
         case .nsfw: return "Higgsfield: rejected by content moderation (credits refunded)"
-        case .timeout: return "Timeout — job exceeded 10 minutes"
+        case .timeout: return "Timeout: job exceeded 10 minutes"
         case .noResult: return "No file in response"
         }
     }
@@ -62,9 +62,11 @@ enum Higgsfield {
         try await ensureWorkspaceSelected()
     }
 
-    static func credits() async -> (credits: Int?, plan: String?) {
+    // `credits` comes back as a decimal (e.g. 509.5) — bridging it `as? Int` fails
+    // and left the footer/settings showing no balance at all.
+    static func credits() async -> (credits: Double?, plan: String?) {
         guard let status = try? await json(["account", "status"]) as? [String: Any] else { return (nil, nil) }
-        return (status["credits"] as? Int, status["subscription_plan_type"] as? String)
+        return ((status["credits"] as? NSNumber)?.doubleValue, status["subscription_plan_type"] as? String)
     }
 
     static func upload(_ path: String) async throws -> String {

@@ -28,7 +28,7 @@ struct LogEntry: Identifiable, Hashable {
     var kind: Kind {
         if line.contains("✓") || line.hasPrefix("Saved") || (line.hasPrefix("All ") && line.contains("generated")) { return .ok }
         if line.lowercased().hasPrefix("error") || line.contains("failed") || line.hasPrefix("Rate limit") || line.contains("no llegó") || line.contains("No se pudo") { return .error }
-        if line.hasPrefix("Warning") || line.contains("accepts max") || (line.contains("/") && line.contains("generated —")) { return .warn }
+        if line.hasPrefix("Warning") || line.contains("accepts max") || (line.contains("/") && line.contains("generated,")) { return .warn }
         if line.hasPrefix("▶") { return .action }
         return .plain
     }
