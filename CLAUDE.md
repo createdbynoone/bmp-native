@@ -34,7 +34,7 @@ BMP/UI/         Theme (paleta/tipografía), Components (Controls, DropZone, Pane
 
 ## Lo que NO está (vs Electron)
 - Modo Video (Seedance) — removido a propósito.
-- Auto-update (electron-updater) y selector de ícono del Dock.
+- Auto-update real (solo aviso de versión nueva vía GitHub, `Core/Updater.swift`) y selector de ícono del Dock.
 
 ## Rendimiento (v2.0.1)
 - **Nada de `repeatForever` en SwiftUI**: una sola animación infinita mantiene todo el view graph re-renderizando a 60–120 Hz (~45 % CPU medido). El dot de tarea activa es `PulseDot` (`Controls.swift`), un `NSView` con `CABasicAnimation` de opacidad — el render server hace el fade, el main thread no trabaja.

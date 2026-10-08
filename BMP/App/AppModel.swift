@@ -39,6 +39,8 @@ final class AppModel {
     // ── Chrome ────────────────────────────────────────────────────────────
     var memoryStats: (total: Int, fired: Int) = (0, 0)
     var credits: (credits: Double?, plan: String?) = (nil, nil)
+    var update: AvailableUpdate?
+    var checkingUpdate = false
     var showHistory = false
     var showLogin = false
     var missingTools: [String] = []
@@ -62,6 +64,7 @@ final class AppModel {
     // ── Boot ──────────────────────────────────────────────────────────────
     func boot() async {
         Staging.reset()
+        Task { await checkForUpdate() }
         refreshMemoryStats()
         var missing: [String] = []
         if !ClaudeCLI.isInstalled { missing.append("claude") }
@@ -75,6 +78,11 @@ final class AppModel {
             }
             await refreshCredits()
         }
+    }
+
+    func checkForUpdate() async {
+        checkingUpdate = true; defer { checkingUpdate = false }
+        update = await Updater.check(current: appVersion)
     }
 
     func refreshMemoryStats() { memoryStats = MemoryStore.stats() }

@@ -43,6 +43,16 @@ struct SettingsView: View {
                 }
                 Text("La clave se pide una sola vez en este Mac y se recuerda en el Keychain.").font(.system(size: 11)).foregroundStyle(.secondary)
             }
+            Section("Updates") {
+                LabeledContent("Version", value: "v\(model.appVersion)")
+                LabeledContent("Latest release") {
+                    HStack(spacing: 8) {
+                        Text(model.update.map { "v\($0.version) available" } ?? "Up to date").foregroundStyle(.secondary)
+                        Button("Check") { Task { await model.checkForUpdate() } }.controlSize(.small).disabled(model.checkingUpdate)
+                        if let u = model.update { Button("Download") { NSWorkspace.shared.open(u.url) }.controlSize(.small) }
+                    }
+                }
+            }
             Section("Memory") {
                 LabeledContent("Prompts stored", value: "\(model.memoryStats.total) · ★ \(model.memoryStats.fired) fired")
                 LabeledContent("Data folder") {

@@ -9,6 +9,7 @@ struct MainView: View {
     var body: some View {
         @Bindable var m = model
         VStack(spacing: 0) {
+            if let u = model.update { UpdateBar(update: u) { model.update = nil } }
             if !model.missingTools.isEmpty { MissingToolsBar(tools: model.missingTools) }
 
             HSplitView {
@@ -41,6 +42,25 @@ struct MainView: View {
         }
         .sheet(isPresented: $m.showHistory) { HistorySheet() }
         .sheet(isPresented: $m.showLogin) { LoginSheet() }
+    }
+}
+
+struct UpdateBar: View {
+    let update: AvailableUpdate
+    let onDismiss: () -> Void
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.down.circle.fill").foregroundStyle(Theme.accent)
+            Text("Hay una versión nueva: v\(update.version)").font(Theme.body(12))
+            Button("Descargar") { NSWorkspace.shared.open(update.url) }
+                .buttonStyle(.borderedProminent).tint(Theme.accent).controlSize(.small)
+            Spacer()
+            Button { onDismiss() } label: { Image(systemName: "xmark") }
+                .buttonStyle(.plain).foregroundStyle(Theme.muted).help("Ocultar")
+        }
+        .padding(.horizontal, 16).padding(.vertical, 6)
+        .background(Theme.accent.opacity(0.08))
+        .overlay(alignment: .bottom) { Divider() }
     }
 }
 
