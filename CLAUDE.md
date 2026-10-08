@@ -19,7 +19,12 @@ BMP/UI/         Theme (paleta/tipografía), Components (Controls, DropZone, Pane
 - Lee/escribe los MISMOS archivos en `~/Library/Application Support/BMP/`: `bmp-memory.json` (historial de prompts, mismo shape, timestamps en ms) y `bmp-prefs.json` (outputPath, authFailCount, authLockUntil). El historial y la carpeta de salida se comparten.
 - `Prompts.system` debe mantenerse byte-idéntico al `SYSTEM_PROMPT` de `../Brotherhood Prompt/electron/main.ts` — si cambia uno, cambiar el otro.
 - Bundle id distinto (`com.brotherhood.bmp.native`) para convivir con la .app Electron.
-- Lock: PBKDF2-SHA512 (200k iter) en vez de scrypt (Swift no lo trae). Misma passphrase; hash/salt en `Lock.swift`, regenerar con el comando del comentario.
+- Lock: PBKDF2-SHA512 (200k iter) en vez de scrypt (Swift no lo trae). Misma passphrase; hash/salt en `Lock.swift`, regenerar con el comando del comentario. La clave se pide **una vez por Mac**: `AppLock.remember()` guarda en el Keychain un HMAC(UUID de la máquina, hash+bundle id) (ThisDeviceOnly); cambiar la passphrase invalida todos los Macs. Settings → Security → "Ask again" lo borra.
+
+## Pipeline de prompt (2 etapas)
+- Referencia: **máx 1** (un drop nuevo reemplaza), con campo de specs (qué tomar de ella). `Staging` normaliza (HEIC/AVIF/TIFF→JPEG, EXIF, tope 2560 px) porque Read de Claude no lee HEIC.
+- Brief automático: si el campo está vacío (o quedó viejo respecto a las entradas), **Sonnet** (`claude-sonnet-5-5`) lo escribe desde referencia+producto+specs; botón ✨ Auto-write lo regenera. Luego **Opus** (`claude-opus-5-5`) escribe el prompt con `Prompts.referenceProtocol`.
+- Motores: Seedream 5.0 Pro, Nano Banana Pro, **Nano Banana 2.1** (`nano_banana_2_1`, `thinking_level=high`).
 
 ## Decisiones de diseño (skills minimalist-ui / redesign, adaptadas a macOS nativo)
 - **Nativo primero**: titlebar estándar con título/subtítulo y toolbar unificada (History · Reset · Settings), `HSplitView` redimensionable, `Picker(.segmented)` para engine/ratio/resolución/variaciones, botones `.borderedProminent` con tint de acento, `Settings` scene (⌘,) con `Form(.grouped)`, sheet de historial con `List` + preview, menú **Prompt** con atajos (⌘↩ generar, ⌘⇧↩ disparar, ⌘Y historial, ⌘R reset, ⌘⇧O carpeta de salida, ⌘⇧C copiar prompt).

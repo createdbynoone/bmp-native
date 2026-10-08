@@ -100,6 +100,7 @@ struct Thumb: View {
             }
         }
         .trackHover($hover)
+        .accessibilityLabel("Image")
         .task(id: path) { image = await Thumbs.load(path) }
     }
 }
@@ -127,8 +128,8 @@ struct DropZone: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        ForEach(Array(files.enumerated()), id: \.offset) { i, f in
-                            Thumb(path: f, onRemove: { files.remove(at: i) })
+                        ForEach(files, id: \.self) { f in
+                            Thumb(path: f, onRemove: { files.removeAll { $0 == f } })
                         }
                         if max == nil || files.count < max! {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)

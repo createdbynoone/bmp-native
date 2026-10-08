@@ -37,6 +37,12 @@ struct SettingsView: View {
                     }
                 }
             }
+            Section("Security") {
+                LabeledContent("Access key") {
+                    Button("Ask again on next launch") { AppLock.forget() }.controlSize(.small)
+                }
+                Text("La clave se pide una sola vez en este Mac y se recuerda en el Keychain.").font(.system(size: 11)).foregroundStyle(.secondary)
+            }
             Section("Memory") {
                 LabeledContent("Prompts stored", value: "\(model.memoryStats.total) · ★ \(model.memoryStats.fired) fired")
                 LabeledContent("Data folder") {

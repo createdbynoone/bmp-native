@@ -25,30 +25,48 @@ enum ClaudeError: LocalizedError {
 // CLAUDE.md/skills; --tools Read + bypassPermissions lets it view the image paths
 // with no write/exec capability; --add-dir scopes read access to their folders.
 //
+// Two stages, two models: Sonnet looks at the reference + product and writes the
+// brief (fast, cheap), Opus turns brief + images into the final image prompt.
+//
 // The transcript is streamed (stream-json) so we can count which paths the Read
 // tool actually opened and fail loudly if any reference was skipped.
 enum ClaudeCLI {
-    static let model = "claude-sonnet-5"
+    static let briefModel = "claude-sonnet-5-5"
+    static let promptModel = "claude-opus-5-5"
     static var isInstalled: Bool { Shell.resolve("claude") != nil }
 
     private static let cooldown: TimeInterval = 4
     private static var lastGenerate: Date = .distantPast
 
-    static func generatePrompt(refs: [String], products: [String], description: String) async throws -> (prompt: String, memoryId: String) {
+    /// Stage 1 (Sonnet): writes the brief from the reference, the product and the
+    /// user's reference specs. Runs only when the brief field is empty.
+    static func generateBrief(refs: [String], products: [String], specs: String) async throws -> String {
+        let unique = Set(refs + products).count
+        let user = block("REFERENCE IMAGE (scene, framing, light, mood)", refs)
+            + block("PRODUCT PHOTOS (Brotherhood garment)", products)
+            + "## REFERENCE SPECS (what the user wants taken from the reference):\n\(specs.isEmpty ? "(none given: infer the strongest, most repeatable traits of the reference)" : specs)\n\n"
+            + "You MUST call the Read tool once for each of the \(unique) image path(s) listed above before writing. Then write the brief."
+        return try await call(model: briefModel, system: Prompts.briefSystem, user: user, images: refs + products)
+    }
+
+    /// Stage 2 (Opus): brief + reference + product → engine-ready image prompt.
+    static func generatePrompt(refs: [String], products: [String], description: String, specs: String = "") async throws -> (prompt: String, memoryId: String) {
         let now = Date()
         if now.timeIntervalSince(lastGenerate) < cooldown {
             throw ClaudeError.rateLimited(Int((cooldown - now.timeIntervalSince(lastGenerate)).rounded(.up)))
         }
         lastGenerate = now
 
-        let system = Prompts.system + MemoryStore.context()
+        let system = Prompts.system + Prompts.engineNote + MemoryStore.context()
         let unique = Set(refs + products).count
         let user = block("REFERENCE IMAGES (composition/mood)", refs)
             + block("PRODUCT PHOTOS (Brotherhood garment)", products)
+            + Prompts.referenceProtocol
+            + (specs.isEmpty ? "" : "## REFERENCE SPECS (priority: follow these over your own reading of the reference):\n\(specs)\n\n")
             + "## USER BRIEF:\n\(description)\n\n"
             + "You MUST call the Read tool once for each of the \(unique) image path(s) listed above before writing anything — do not skip any, do not infer content from filenames alone. Only after viewing every image, generate the marketing image prompt."
 
-        let prompt = try await call(system: system, user: user, images: refs + products)
+        let prompt = try await call(model: promptModel, system: system, user: user, images: refs + products)
         let entry = MemoryStore.add(description: description, prompt: prompt)
         return (prompt, entry.id)
     }
@@ -59,7 +77,7 @@ enum ClaudeCLI {
         return "## \(label):\n\(lines)\n\n"
     }
 
-    private static func call(system: String, user: String, images: [String]) async throws -> String {
+    private static func call(model: String, system: String, user: String, images: [String]) async throws -> String {
         let unique = Array(NSOrderedSet(array: images)) as! [String]
         let missing = unique.filter { !FileManager.default.fileExists(atPath: $0) }
         if !missing.isEmpty { throw ClaudeError.missingImages(missing.map { ($0 as NSString).lastPathComponent }) }

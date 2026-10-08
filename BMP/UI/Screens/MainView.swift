@@ -70,8 +70,12 @@ struct InputsColumn: View {
             VStack(spacing: 12) {
                 Card {
                     VStack(alignment: .leading, spacing: 10) {
-                        Eyebrow(text: "References", hint: "composition · mood")
-                        DropZone(placeholder: "Drop references", files: $m.refs) { model.addRefs($0) }
+                        Eyebrow(text: "Reference", hint: "1 max · scene, light, mood")
+                        DropZone(placeholder: "Drop reference", files: $m.refs, max: 1) { model.addRefs($0) }
+                        if !model.refs.isEmpty {
+                            TextField("What to take from it (light, angle, setting…)", text: $m.refSpecs, axis: .vertical)
+                                .textFieldStyle(.roundedBorder).font(Theme.body(12.5)).lineLimit(1...3)
+                        }
                     }
                 }
                 Card {
@@ -82,8 +86,18 @@ struct InputsColumn: View {
                 }
                 Card {
                     VStack(alignment: .leading, spacing: 8) {
-                        Eyebrow(text: "Brief")
-                        Editor(text: $m.brief, placeholder: "Gorra en ola de playa, luz dorada al atardecer")
+                        HStack {
+                            Eyebrow(text: "Brief", hint: "auto · Sonnet")
+                            Spacer()
+                            Button { model.autoWriteBrief() } label: {
+                                if model.briefLoading { ProgressView().controlSize(.small).scaleEffect(0.6).frame(width: 14, height: 14) }
+                                else { Label("Auto-write", systemImage: "sparkles") }
+                            }
+                            .buttonStyle(.accessoryBar).controlSize(.small)
+                            .disabled(!model.canAutoBrief)
+                            .help("Sonnet writes the brief from the reference, product and specs")
+                        }
+                        Editor(text: $m.brief, placeholder: "Vacío: Sonnet lo escribe desde la referencia y el producto")
                             .frame(minHeight: 72, maxHeight: 140)
                     }
                 }
@@ -92,7 +106,7 @@ struct InputsColumn: View {
                     HStack(spacing: 8) {
                         if model.generateStatus == .loading {
                             ProgressView().controlSize(.small).scaleEffect(0.7).frame(width: 12, height: 12)
-                            Text("Generating with Claude…")
+                            Text(model.generateStage.isEmpty ? "Generating…" : model.generateStage + "…")
                         } else {
                             Image(systemName: "text.badge.star")
                             Text("Generate prompt")
@@ -105,7 +119,7 @@ struct InputsColumn: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .tint(Theme.accent)
-                .disabled(!model.canGenerate || model.generateStatus == .loading)
+                .disabled(!model.canGenerate || model.generateStatus == .loading || model.briefLoading)
                 .keyboardShortcut(.return, modifiers: .command)
                 .help("Generate prompt  ⌘↩")
 
@@ -141,7 +155,7 @@ struct OutputColumn: View {
                     .frame(minHeight: 120, maxHeight: model.prompt.isEmpty ? .infinity : 260)
             }
             if model.prompt.isEmpty && !model.showLog {
-                EmptyState(steps: ["Drop references and the product", "Write a short brief", "Generate, then fire to Higgsfield"])
+                EmptyState(steps: ["Drop one reference and the product", "Add specs, or let Sonnet write the brief", "Generate with Opus, then fire to Higgsfield"])
             }
         }
         .padding(16)

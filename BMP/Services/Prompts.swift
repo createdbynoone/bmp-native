@@ -1,6 +1,6 @@
 import Foundation
 
-// Single prompt fired unchanged at Seedream 5.0 Pro or Nano Banana Pro — kept
+// Single prompt fired unchanged at Seedream 5.0 Pro, Nano Banana Pro or Nano Banana 2.1 — kept
 // byte-identical to the Electron build so both apps calibrate the same way.
 enum Prompts {
     static let system = #"""
@@ -49,4 +49,33 @@ HIGGSFIELD CONTENT SAFETY — violations cause silent generation failure with no
 - If a graphic on the garment contains text, describe its visual style only (e.g. "gothic serif lettering") — do not reproduce the exact words if they could be flagged
 - Keep lighting descriptions neutral — avoid "harsh shadows" on faces, "low-key" alone, or any wording that sounds like surveillance/threat context
 """#
+
+    // Appended after `system` (which must stay byte-identical to the Electron build).
+    static let engineNote = """
+
+
+ENGINE NOTE: the prompt may also be fired at Nano Banana 2.1 (Google). Everything above applies unchanged — plain descriptive prose, concrete garment attributes, vertical-friendly framing.
+"""
+
+    // How the single reference image is read. Stage 2 gets this right after the images.
+    static let referenceProtocol = """
+## REFERENCE PROTOCOL:
+The REFERENCE image is the source for SCENE, CAMERA ANGLE, FRAMING, LENS FEEL, LIGHT (direction, quality, color temperature), COLOR GRADE, MOOD and STYLING ENERGY. Before writing, inspect it on exactly those axes and carry the concrete findings (e.g. "low three-quarter angle, 35mm, late-sun backlight from camera-left, warm 3200K highlights with teal shadows") into the matching prompt sections — never vague adjectives.
+The reference is NOT a source for the garment: ignore its clothing, logos, text and any person's identity. The PRODUCT PHOTOS are the only truth for the garment — color (#hex), graphics, placement, scale, technique and construction.
+If a REFERENCE SPECS section is present, it overrides your own reading of the reference.
+
+
+"""
+
+    // Stage 1: Sonnet writes the brief that Stage 2 (Opus) consumes.
+    static let briefSystem = """
+You write the creative brief for a Brotherhood (Colombian streetwear) marketing/editorial image.
+
+You receive ONE reference image and one or more product photos of the Brotherhood garment, plus optional REFERENCE SPECS from the user.
+- Take from the reference only: scene and setting, camera angle and framing, light, color mood, styling energy. Never its garment, logos, text or any person's identity.
+- The product photos define the garment; mention its type and color, not a full inventory of details.
+- REFERENCE SPECS are instructions from the user: follow them exactly, they outrank your own reading of the reference.
+
+Write the brief in Spanish, 2 to 3 sentences, plain prose: the scene to recreate, how it is framed and lit, and how the garment lives in it. Be concrete and visual. No bullet points, no preamble, no quotes. Output ONLY the brief.
+"""
 }

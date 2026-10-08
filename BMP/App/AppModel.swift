@@ -5,18 +5,25 @@ import Observation
 @Observable
 final class AppModel {
     // ── Lock ──────────────────────────────────────────────────────────────
-    var unlocked = false
+    // The key is asked once per Mac; afterwards the Keychain token opens the app directly.
+    var unlocked = AppLock.isRemembered()
 
     // ── Inputs ────────────────────────────────────────────────────────────
     var refs: [String] = []
     var products: [String] = []
     var brief = ""
+    var refSpecs = ""                 // what to take from the (single) reference
 
     // ── Prompt ────────────────────────────────────────────────────────────
     var prompt = ""
     var generateStatus: GenerateStatus = .idle
     var generateError = ""
     var memoryId: String?
+    var generateStage = ""            // "Brief · Sonnet" / "Prompt · Opus" while loading
+    var briefLoading = false
+    // The brief Sonnet wrote + the inputs it was written from: while the field still
+    // holds that text and the inputs changed, Generate rewrites it instead of reusing a stale one.
+    private var autoBrief: (text: String, signature: String)?
 
     // ── Fire settings ─────────────────────────────────────────────────────
     var provider: Provider = .nanobanana
@@ -45,7 +52,9 @@ final class AppModel {
     }
 
     var fireStatus: FireStatus { tasks > 0 ? .loading : fireResult }
-    var canGenerate: Bool { !refs.isEmpty && !products.isEmpty && !brief.trimmingCharacters(in: .whitespaces).isEmpty }
+    // The brief is optional: left empty, Sonnet writes it from the reference + product + specs.
+    var canGenerate: Bool { !refs.isEmpty && !products.isEmpty }
+    var canAutoBrief: Bool { canGenerate && generateStatus != .loading && !briefLoading }
     var canFire: Bool { !prompt.isEmpty }
     var showLog: Bool { !log.isEmpty || tasks > 0 }
     var footerLabel: String { "\(provider.label) \(aspectRatio) \(resolution.uppercased())" }
@@ -101,18 +110,63 @@ final class AppModel {
     }
 
     // ── Drops ─────────────────────────────────────────────────────────────
-    func addRefs(_ urls: [URL]) { if let staged = try? Staging.stage(urls) { refs += staged } }
-    func addProducts(_ urls: [URL]) { if let staged = try? Staging.stage(urls) { products += staged } }
+    // One reference only: a second drop replaces the first (several references pull the
+    // prompt in different directions). Staging decodes/re-encodes, so it runs off-main.
+    func addRefs(_ urls: [URL]) {
+        guard let first = urls.first else { return }
+        if urls.count > 1 { push("Warning: only 1 reference is used, took \(first.lastPathComponent)") }
+        stageOffMain([first]) { self.refs = $0 }
+    }
+    func addProducts(_ urls: [URL]) { stageOffMain(urls) { self.products += $0 } }
+
+    private func stageOffMain(_ urls: [URL], apply: @escaping @MainActor ([String]) -> Void) {
+        Task {
+            let staged = await Task.detached(priority: .userInitiated) { try? Staging.stage(urls) }.value
+            if let staged { apply(staged) }
+        }
+    }
+
+    private var inputSignature: String { (refs + products + [refSpecs]).joined(separator: "|") }
+
+    /// Stage 1 on demand: the sparkle button next to the brief.
+    func autoWriteBrief() {
+        guard canAutoBrief else { return }
+        briefLoading = true; generateError = ""
+        push("▶ Sonnet · writing brief...")
+        let (r, p, sp, sig) = (refs, products, refSpecs, inputSignature)
+        Task {
+            defer { briefLoading = false }
+            do {
+                let text = try await ClaudeCLI.generateBrief(refs: r, products: p, specs: sp)
+                brief = text; autoBrief = (text, sig)
+                push("Brief ready ✓")
+            } catch {
+                generateError = error.localizedDescription
+                push("Brief failed: \(error.localizedDescription)")
+            }
+        }
+    }
 
     // ── Generate prompt ───────────────────────────────────────────────────
     func generate() {
-        guard canGenerate, generateStatus != .loading else { return }
+        guard canGenerate, generateStatus != .loading, !briefLoading else { return }
         generateStatus = .loading; prompt = ""; generateError = ""
-        push("▶ Claude · generating prompt...")
-        let (r, p, d) = (refs, products, brief)
+        let (r, p, sp, sig) = (refs, products, refSpecs, inputSignature)
+        let typed = brief.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stale = autoBrief.map { $0.text == brief && $0.signature != sig } ?? false
         Task {
             do {
-                let result = try await ClaudeCLI.generatePrompt(refs: r, products: p, description: d)
+                var description = typed
+                if description.isEmpty || stale {
+                    generateStage = "Brief · Sonnet"
+                    push("▶ Sonnet · writing brief...")
+                    description = try await ClaudeCLI.generateBrief(refs: r, products: p, specs: sp)
+                    brief = description; autoBrief = (description, sig)
+                    push("Brief ready ✓")
+                }
+                generateStage = "Prompt · Opus"
+                push("▶ Opus · writing prompt...")
+                let result = try await ClaudeCLI.generatePrompt(refs: r, products: p, description: description, specs: sp)
                 prompt = result.prompt; memoryId = result.memoryId; generateStatus = .done
                 push("Prompt ready ✓")
                 refreshMemoryStats()
@@ -120,6 +174,7 @@ final class AppModel {
                 generateError = error.localizedDescription; generateStatus = .error
                 push("Prompt generation failed: \(error.localizedDescription)")
             }
+            generateStage = ""
         }
     }
 
@@ -194,7 +249,7 @@ final class AppModel {
             let job = try await Higgsfield.generate(provider.jobType, [
                 ("prompt", prompt), ("aspect_ratio", safeRatio), ("resolution", safeRes),
                 ("image_references", refs.isEmpty ? nil : refs),
-            ]) { [weak self] line in Task { @MainActor in self?.push(line) } }
+            ] + provider.extraParams) { [weak self] line in Task { @MainActor in self?.push(line) } }
 
             guard let url = job.result_url else { push("No image in response"); return false }
             let name = "bmp_\(Int(Date().timeIntervalSince1970 * 1000)).\(Downloader.ext(of: url, fallback: "jpg"))"
@@ -212,7 +267,7 @@ final class AppModel {
 
     // ── Reset ─────────────────────────────────────────────────────────────
     func reset() {
-        refs = []; products = []; brief = ""; prompt = ""; generateStatus = .idle; memoryId = nil; variations = 1; generateError = ""
+        refs = []; products = []; brief = ""; refSpecs = ""; autoBrief = nil; prompt = ""; generateStatus = .idle; memoryId = nil; variations = 1; generateError = ""
         if tasks == 0 { fireResult = .idle; log = [] }
     }
 }

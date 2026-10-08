@@ -1,5 +1,8 @@
 import Foundation
 import CommonCrypto
+import CryptoKit
+import IOKit
+import Security
 
 // Only the PBKDF2-SHA512 hash + salt live here — the passphrase itself is never in
 // source or in the bundle. Regenerate with:
@@ -66,7 +69,61 @@ enum AppLock {
         var prefs = Prefs.load()
         prefs.authFailCount = 0
         prefs.authLockUntil = 0
-        prefs.unlockedAt = ISO8601DateFormatter().string(from: Date())
         prefs.save()
+        remember()
     }
+
+    // ── "Unlock once per Mac" ─────────────────────────────────────────────
+    // After a correct key the Mac is remembered through a Keychain item instead of
+    // a plain flag in the prefs JSON (anyone could edit that file). The stored
+    // token is HMAC-SHA256(machine UUID, key hash + bundle id):
+    //   · bound to this Mac     → copying the Keychain item/prefs elsewhere fails
+    //   · bound to the key hash → changing the passphrase re-locks every Mac
+    //   · ThisDeviceOnly        → never syncs through iCloud Keychain
+    // Any Keychain failure falls back to asking for the key, never to opening.
+    private static let service = Bundle.main.bundleIdentifier ?? "com.brotherhood.native"
+    private static let account = "unlock-token"
+
+    private static func machineID() -> String {
+        let svc = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        guard svc != 0 else { return "unknown-machine" }
+        defer { IOObjectRelease(svc) }
+        return (IORegistryEntryCreateCFProperty(svc, "IOPlatformUUID" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() as? String) ?? "unknown-machine"
+    }
+
+    private static func expectedToken() -> Data {
+        let mac = HMAC<SHA256>.authenticationCode(for: Data((hashHex + service).utf8),
+                                                  using: SymmetricKey(data: Data(machineID().utf8)))
+        return Data(mac)
+    }
+
+    private static var keychainQuery: [CFString: Any] {
+        [kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: account]
+    }
+
+    /// True when this Mac already entered the correct key.
+    static func isRemembered() -> Bool {
+        var q = keychainQuery
+        q[kSecReturnData] = true
+        q[kSecMatchLimit] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let stored = out as? Data else { return false }
+        let expected = expectedToken()
+        guard stored.count == expected.count else { return false }
+        var diff: UInt8 = 0
+        for (a, b) in zip(stored, expected) { diff |= a ^ b }
+        return diff == 0
+    }
+
+    static func remember() {
+        SecItemDelete(keychainQuery as CFDictionary)
+        var q = keychainQuery
+        q[kSecValueData] = expectedToken()
+        q[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        SecItemAdd(q as CFDictionary, nil)
+    }
+
+    /// Ask for the key again on next launch.
+    static func forget() { SecItemDelete(keychainQuery as CFDictionary) }
 }
